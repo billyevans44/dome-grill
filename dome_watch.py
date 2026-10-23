@@ -111,11 +111,24 @@ def notify(title, message, click=None, urgent=True):
         headers["Actions"] = f"view, Book now, {click}"
     if ALERT_EMAIL:
         headers["Email"] = ALERT_EMAIL
+    try:
+        post_ntfy(message, headers)
+    except urllib.error.HTTPError as e:
+        if "Email" not in headers:
+            raise
+        # Never let the email part (ntfy.sh refuses anonymous email) block the push
+        log(f"email alert refused ({e.code}), sending push only")
+        del headers["Email"]
+        post_ntfy(message, headers)
+
+
+def post_ntfy(message, headers):
     req = urllib.request.Request(f"{NTFY_SERVER}/{NTFY_TOPIC}", data=message.encode(), headers=headers, method="POST")
     try:
         urllib.request.urlopen(req, timeout=30).read()
-    except urllib.error.URLError as e:
-        log(f"notification failed: {e}")
+    except urllib.error.HTTPError as e:
+        log(f"notification failed: {e.code} {e.read().decode(errors='replace')[:200]}")
+        raise
 
 
 def check_once():
@@ -149,7 +162,10 @@ def run():
             failures += 1
             log(f"check failed ({failures}): {e}")
             if failures == 5:
-                notify("Dome watcher is failing", f"5 checks in a row failed. Last error: {e}", urgent=False)
+                try:
+                    notify("Dome watcher is failing", f"5 checks in a row failed. Last error: {e}", urgent=False)
+                except urllib.error.URLError:
+                    pass
         time.sleep(INTERVAL + random.uniform(0, 30))
     log("date has passed, stopping")
 

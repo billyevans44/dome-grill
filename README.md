@@ -21,7 +21,6 @@ scheduled jobs a few minutes late when busy). Free for public repos.
 
 1. Repo → **Settings** → **Secrets and variables** → **Actions** →
    **New repository secret**: name `NTFY_TOPIC`, value your topic.
-   Optionally add `ALERT_EMAIL` the same way.
 2. **Actions** tab → enable workflows if asked → **Watch for a table** →
    **Run workflow** to check it once now. A green tick means it worked; open the
    run to see `... nothing available`.
@@ -68,7 +67,7 @@ Stop the PC sleeping (Settings → System → Power → Sleep: Never) while it r
 |---|---|---|
 | `VENUE` | `grillroomuk` | SevenRooms venue id (The Dome Grill Room) |
 | `NTFY_TOPIC` | — | your ntfy topic name |
-| `ALERT_EMAIL` | — | also email alerts (sent free by ntfy.sh) |
+| `ALERT_EMAIL` | — | email alerts via ntfy - needs an ntfy.sh account now; ignored (push still sent) if refused |
 | `DATE` | `2026-11-13` | date to watch |
 | `PARTY_SIZE` | `2` | guests |
 | `EARLIEST` / `LATEST` | `11:00` / `23:30` | only alert for slots in this window |
