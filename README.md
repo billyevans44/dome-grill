@@ -14,6 +14,21 @@ hosting.
 3. In the app's notification settings for that topic, allow "urgent" alerts to
    make sound / bypass Do Not Disturb.
 
+## 2. Run free on GitHub Actions (no installs, no server)
+
+`.github/workflows/watch.yml` runs one check every 5 minutes (GitHub can run
+scheduled jobs a few minutes late when busy). Free for public repos.
+
+1. Repo → **Settings** → **Secrets and variables** → **Actions** →
+   **New repository secret**: name `NTFY_TOPIC`, value your topic.
+   Optionally add `ALERT_EMAIL` the same way.
+2. **Actions** tab → enable workflows if asked → **Watch for a table** →
+   **Run workflow** to check it once now. A green tick means it worked; open the
+   run to see `... nothing available`.
+
+To stop it: Actions → Watch for a table → **...** → **Disable workflow**.
+If you also run it on Railway, disable one of them to avoid double alerts.
+
 ## 2a. Run on Railway (recommended — keeps going when your PC is off)
 
 Install the CLI (needs Node) and deploy from this folder in PowerShell:

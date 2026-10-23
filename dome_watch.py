@@ -4,6 +4,7 @@ Standard library only. Configure with environment variables (see README.md).
 
   python dome_watch.py              run forever, checking every few minutes
   python dome_watch.py --once       do one check, print what was found, exit
+  python dome_watch.py --check      one check, alert if a table is open (for GitHub Actions)
   python dome_watch.py --test       send a test notification and exit
 """
 
@@ -123,6 +124,13 @@ def check_once():
     return slots
 
 
+def alert(slots):
+    summary = ", ".join(f"{s} ({slots[s]})" if slots[s] else s for s in slots)
+    notify(f"TABLE OPEN {DATE}: {', '.join(slots)}",
+           f"{PARTY_SIZE} people, {summary}. Tap to book - deposit needed.",
+           click=booking_link())
+
+
 def run():
     last_alert = {}            # slot -> time we last alerted about it
     failures = 0
@@ -134,10 +142,7 @@ def run():
             now = time.time()
             due = [s for s in slots if now - last_alert.get(s, 0) > REALERT_MINUTES * 60]
             if due:
-                summary = ", ".join(f"{s} ({slots[s]})" if slots[s] else s for s in slots)
-                notify(f"TABLE OPEN {DATE}: {', '.join(due)}",
-                       f"{PARTY_SIZE} people, {summary}. Tap to book - deposit needed.",
-                       click=booking_link())
+                alert(slots)
                 for s in due:
                     last_alert[s] = now
         except Exception as e:  # keep watching through network blips
@@ -156,6 +161,13 @@ def main():
         log("test notification sent")
     elif args[:1] == ["--once"]:
         check_once()
+    elif args[:1] == ["--check"]:
+        if date.today() > date.fromisoformat(DATE):
+            log("date has passed, nothing to do")
+            return
+        slots = check_once()   # raises on failure so the Actions run shows red
+        if slots:
+            alert(slots)
     else:
         run()
 
