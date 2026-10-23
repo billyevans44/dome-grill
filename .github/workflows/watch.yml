@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "*/5 * * * *"   # GitHub may run these a few minutes late at busy times
   workflow_dispatch:         # "Run workflow" button for a manual check
+    inputs:
+      date:
+        description: "Date to check (YYYY-MM-DD) - pick one with free tables to test alerts"
+        default: "2026-11-13"
 
 concurrency:
   group: watch
@@ -19,4 +23,5 @@ jobs:
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+          DATE: ${{ inputs.date || '2026-11-13' }}
         run: python3 dome_watch.py --check
