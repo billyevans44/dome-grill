@@ -7,7 +7,7 @@ on:
     inputs:
       date:
         description: "Date(s) to check, YYYY-MM-DD, comma-separated - pick one with free tables to test alerts"
-        default: "2026-11-13,2026-11-14"
+        default: "2026-12-13,2026-12-14"
 
 concurrency:
   group: watch
@@ -23,5 +23,5 @@ jobs:
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
-          DATES: ${{ inputs.date || '2026-11-13,2026-11-14' }}
+          DATES: ${{ inputs.date || '2026-12-13,2026-12-14' }}
         run: python3 dome_watch.py --check

@@ -20,7 +20,7 @@ from datetime import date, datetime
 
 VENUE = os.environ.get("VENUE", "grillroomuk")      # SevenRooms venue id of The Dome's Grill Room
 # YYYY-MM-DD, comma-separated for several days (DATE is accepted as an alias)
-DATES = [d.strip() for d in (os.environ.get("DATES") or os.environ.get("DATE") or "2026-11-13,2026-11-14")
+DATES = [d.strip() for d in (os.environ.get("DATES") or os.environ.get("DATE") or "2026-12-13,2026-12-14")
          .split(",") if d.strip()]
 PARTY_SIZE = int(os.environ.get("PARTY_SIZE", "2"))
 EARLIEST = os.environ.get("EARLIEST", "11:00")      # only alert for slots in this window (24h)
@@ -50,7 +50,7 @@ def http_get(url):
 
 def pretty(day):
     d = date.fromisoformat(day)
-    return f"{d:%a} {d.day} {d:%b}"   # "Fri 13 Nov"
+    return f"{d:%a} {d.day} {d:%b}"   # "Sun 13 Dec"
 
 
 def upcoming():
