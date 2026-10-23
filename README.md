@@ -1,6 +1,6 @@
 # Dome Grill Room table watcher
 
-Checks SevenRooms every ~3 minutes for a table for 2 on Fri 13 Nov 2026 and
+Checks SevenRooms every ~3 minutes for a table for 2 on Fri 13 or Sat 14 Nov 2026 and
 pushes an alert to your phone (and optionally email) the moment one appears.
 Tap the alert, it opens the booking page, you pay the deposit. Free apart from
 hosting.
@@ -68,7 +68,7 @@ Stop the PC sleeping (Settings → System → Power → Sleep: Never) while it r
 | `VENUE` | `grillroomuk` | SevenRooms venue id (The Dome Grill Room) |
 | `NTFY_TOPIC` | — | your ntfy topic name |
 | `ALERT_EMAIL` | — | email alerts via ntfy - needs an ntfy.sh account now; ignored (push still sent) if refused |
-| `DATE` | `2026-11-13` | date to watch |
+| `DATES` | `2026-11-13,2026-11-14` | dates to watch, comma-separated |
 | `PARTY_SIZE` | `2` | guests |
 | `EARLIEST` / `LATEST` | `11:00` / `23:30` | only alert for slots in this window |
 | `INTERVAL_SECONDS` | `180` | gap between checks (+ up to 30s random) |

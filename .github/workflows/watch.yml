@@ -6,8 +6,8 @@ on:
   workflow_dispatch:         # "Run workflow" button for a manual check
     inputs:
       date:
-        description: "Date to check (YYYY-MM-DD) - pick one with free tables to test alerts"
-        default: "2026-11-13"
+        description: "Date(s) to check, YYYY-MM-DD, comma-separated - pick one with free tables to test alerts"
+        default: "2026-11-13,2026-11-14"
 
 concurrency:
   group: watch
@@ -23,5 +23,5 @@ jobs:
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
-          DATE: ${{ inputs.date || '2026-11-13' }}
+          DATES: ${{ inputs.date || '2026-11-13,2026-11-14' }}
         run: python3 dome_watch.py --check

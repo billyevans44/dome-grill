@@ -19,7 +19,9 @@ import urllib.request
 from datetime import date, datetime
 
 VENUE = os.environ.get("VENUE", "grillroomuk")      # SevenRooms venue id of The Dome's Grill Room
-DATE = os.environ.get("DATE", "2026-11-13")         # YYYY-MM-DD
+# YYYY-MM-DD, comma-separated for several days (DATE is accepted as an alias)
+DATES = [d.strip() for d in (os.environ.get("DATES") or os.environ.get("DATE") or "2026-11-13,2026-11-14")
+         .split(",") if d.strip()]
 PARTY_SIZE = int(os.environ.get("PARTY_SIZE", "2"))
 EARLIEST = os.environ.get("EARLIEST", "11:00")      # only alert for slots in this window (24h)
 LATEST = os.environ.get("LATEST", "23:30")
@@ -46,14 +48,23 @@ def http_get(url):
         return resp.read().decode("utf-8", errors="replace")
 
 
-def booking_link():
-    q = urllib.parse.urlencode({"date": DATE, "party_size": PARTY_SIZE})
+def pretty(day):
+    d = date.fromisoformat(day)
+    return f"{d:%a} {d.day} {d:%b}"   # "Fri 13 Nov"
+
+
+def upcoming():
+    return [d for d in DATES if date.fromisoformat(d) >= date.today()]
+
+
+def booking_link(day):
+    q = urllib.parse.urlencode({"date": day, "party_size": PARTY_SIZE})
     return f"https://www.sevenrooms.com/reservations/{VENUE}?{q}"
 
 
-def fetch_day(time_slot):
-    """Return the list of shifts for DATE, trying both date formats SevenRooms has used."""
-    d = date.fromisoformat(DATE)
+def fetch_day(day, time_slot):
+    """Return the list of shifts for day, trying both date formats SevenRooms has used."""
+    d = date.fromisoformat(day)
     last_error = None
     for start in (d.isoformat(), d.strftime("%m-%d-%Y")):
         params = {
@@ -71,9 +82,9 @@ def fetch_day(time_slot):
             last_error = e
             continue
         availability = (body.get("data") or {}).get("availability") or {}
-        if DATE in availability:
-            return availability[DATE]
-        last_error = RuntimeError(f"no {DATE} in response: {json.dumps(body)[:300]}")
+        if day in availability:
+            return availability[day]
+        last_error = RuntimeError(f"no {day} in response: {json.dumps(body)[:300]}")
     raise RuntimeError(f"availability lookup failed: {last_error}")
 
 
@@ -88,10 +99,10 @@ def slot_time(t):
         return t.get("time", "?")
 
 
-def open_slots():
+def open_slots(day):
     found = {}
     for qt in QUERY_TIMES:
-        for shift in fetch_day(qt):
+        for shift in fetch_day(day, qt):
             for t in shift.get("times") or []:
                 if t.get("type") != "book":   # "request"/missing type = not bookable online
                     continue
@@ -131,33 +142,35 @@ def post_ntfy(message, headers):
         raise
 
 
-def check_once():
-    slots = open_slots()
-    log(f"{VENUE} {DATE} x{PARTY_SIZE}: " + (", ".join(slots) if slots else "nothing available"))
+def check_once(day):
+    slots = open_slots(day)
+    log(f"{VENUE} {day} x{PARTY_SIZE}: " + (", ".join(slots) if slots else "nothing available"))
     return slots
 
 
-def alert(slots):
+def alert(day, slots):
     summary = ", ".join(f"{s} ({slots[s]})" if slots[s] else s for s in slots)
-    notify(f"TABLE OPEN {DATE}: {', '.join(slots)}",
-           f"{PARTY_SIZE} people, {summary}. Tap to book - deposit needed.",
-           click=booking_link())
+    notify(f"TABLE OPEN {pretty(day)}: {', '.join(slots)}",
+           f"{PARTY_SIZE} people, {pretty(day)}: {summary}. Tap to book - deposit needed.",
+           click=booking_link(day))
 
 
 def run():
-    last_alert = {}            # slot -> time we last alerted about it
+    last_alert = {}            # (day, slot) -> time we last alerted about it
     failures = 0
-    notify("Dome watcher started", f"Watching {VENUE} on {DATE} for {PARTY_SIZE}.", urgent=False)
-    while date.today() <= date.fromisoformat(DATE):
+    days = ", ".join(pretty(d) for d in DATES)
+    notify("Dome watcher started", f"Watching {VENUE} on {days} for {PARTY_SIZE}.", urgent=False)
+    while upcoming():
         try:
-            slots = check_once()
+            for day in upcoming():
+                slots = check_once(day)
+                now = time.time()
+                due = [s for s in slots if now - last_alert.get((day, s), 0) > REALERT_MINUTES * 60]
+                if due:
+                    alert(day, slots)
+                    for s in due:
+                        last_alert[(day, s)] = now
             failures = 0
-            now = time.time()
-            due = [s for s in slots if now - last_alert.get(s, 0) > REALERT_MINUTES * 60]
-            if due:
-                alert(slots)
-                for s in due:
-                    last_alert[s] = now
         except Exception as e:  # keep watching through network blips
             failures += 1
             log(f"check failed ({failures}): {e}")
@@ -167,23 +180,31 @@ def run():
                 except urllib.error.URLError:
                     pass
         time.sleep(INTERVAL + random.uniform(0, 30))
-    log("date has passed, stopping")
+    log("all dates have passed, stopping")
 
 
 def main():
     args = sys.argv[1:]
     if args[:1] == ["--test"]:
-        notify("Dome watcher test", "If you can read this, alerts work.", click=booking_link())
+        notify("Dome watcher test", "If you can read this, alerts work.", click=booking_link(DATES[0]))
         log("test notification sent")
     elif args[:1] == ["--once"]:
-        check_once()
+        for day in DATES:
+            check_once(day)
     elif args[:1] == ["--check"]:
-        if date.today() > date.fromisoformat(DATE):
-            log("date has passed, nothing to do")
-            return
-        slots = check_once()   # raises on failure so the Actions run shows red
-        if slots:
-            alert(slots)
+        if not upcoming():
+            log("all dates have passed, nothing to do")
+        errors = []
+        for day in upcoming():   # one day failing shouldn't stop the others being checked
+            try:
+                slots = check_once(day)
+                if slots:
+                    alert(day, slots)
+            except Exception as e:
+                log(f"{day} failed: {e}")
+                errors.append(e)
+        if errors:
+            sys.exit(1)          # so the Actions run shows red
     else:
         run()
 
